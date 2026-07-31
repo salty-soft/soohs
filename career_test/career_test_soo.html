@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>そお・しごとたんけん診断</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root{
+    --sky-deep:#1B6FA8;
+    --sky-mid:#3E9BD6;
+    --sky-light:#8FD3F4;
+    --sun:#FFC93C;
+    --sun-deep:#FFA400;
+    --coral:#FF6F59;
+    --coral-deep:#E8523D;
+    --cream:#FFF8ED;
+    --ink:#1F2E3D;
+    --ink-soft:#4A5A6A;
+    --card:#ffffff;
+    --leaf:#4CAF7D;
+    --radius-lg:28px;
+    --radius-md:18px;
+    --radius-sm:12px;
+    --shadow:0 10px 30px rgba(27,111,168,0.15);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Noto Sans JP',sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(circle at 15% -10%, #FFE9B8 0%, transparent 45%),
+      radial-gradient(circle at 100% 0%, var(--sky-light) 0%, transparent 40%),
+      linear-gradient(180deg, var(--cream) 0%, #FDF3E2 100%);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{
+    max-width:640px;
+    margin:0 auto;
+    padding:20px 16px 60px;
+    min-height:100vh;
+  }
+  h1,h2,h3{font-family:'Zen Maru Gothic',sans-serif;}
+  .screen{display:none;animation:fadeIn .45s ease;}
+  .screen.active{display:block;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+
+  /* ---------- header / road ---------- */
+  .top-bar{
+    display:flex;align-items:center;gap:10px;margin-bottom:14px;
+  }
+  .badge-school{
+    font-size:12px;font-weight:700;color:var(--sky-deep);
+    background:#E7F5FF;border:1.5px solid var(--sky-light);
+    padding:4px 12px;border-radius:999px;
+  }
+  .road-wrap{
+    background:var(--card);
+    border-radius:999px;
+    padding:10px 16px;
+    box-shadow:var(--shadow);
+    display:flex;align-items:center;gap:10px;
+    margin-bottom:22px;
+  }
+  .road-track{
+    position:relative;flex:1;height:10px;background:#EAF2F8;border-radius:999px;overflow:visible;
+  }
+  .road-fill{
+    position:absolute;left:0;top:0;height:100%;
+    background:linear-gradient(90deg,var(--sun),var(--coral));
+    border-radius:999px;transition:width .5s cubic-bezier(.3,1,.4,1);
+  }
+  .road-walker{
+    position:absolute;top:50%;transform:translate(-50%,-60%);
+    font-size:20px;transition:left .5s cubic-bezier(.3,1,.4,1);
+    filter:drop-shadow(0 2px 2px rgba(0,0,0,.2));
+  }
+  .road-count{font-size:13px;font-weight:700;color:var(--ink-soft);white-space:nowrap;}
+
+  /* ---------- hero / intro ---------- */
+  .hero{
+    background:linear-gradient(160deg,var(--sky-deep),var(--sky-mid) 60%,var(--sky-light));
+    border-radius:var(--radius-lg);
+    padding:34px 24px 30px;
+    color:#fff;
+    box-shadow:var(--shadow);
+    position:relative;overflow:hidden;
+    margin-bottom:20px;
+  }
+  .hero::after{
+    content:"";position:absolute;right:-30px;bottom:-40px;width:180px;height:180px;
+    background:radial-gradient(circle, rgba(255,201,60,.55), transparent 70%);
+    border-radius:50%;
+  }
+  .hero .eyebrow{
+    font-size:13px;font-weight:700;letter-spacing:.06em;
+    background:rgba(255,255,255,.18);display:inline-block;
+    padding:5px 14px;border-radius:999px;margin-bottom:14px;
+  }
+  .hero h1{font-size:28px;line-height:1.35;margin:0 0 10px;font-weight:900;}
+  .hero p{font-size:14.5px;line-height:1.8;margin:0;opacity:.95;position:relative;z-index:1;}
+  .compass{
+    position:absolute;right:16px;top:16px;font-size:46px;
+    animation:spin 9s linear infinite;
+    opacity:.9;
+  }
+  @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+
+  .card{
+    background:var(--card);
+    border-radius:var(--radius-md);
+    padding:22px 20px;
+    box-shadow:var(--shadow);
+    margin-bottom:16px;
+  }
+  .card h3{margin:0 0 12px;font-size:17px;color:var(--sky-deep);}
+  label.field-label{
+    display:block;font-size:13.5px;font-weight:700;color:var(--ink-soft);margin:14px 0 8px;
+  }
+  input[type=text]{
+    width:100%;padding:13px 14px;border-radius:var(--radius-sm);
+    border:2px solid #E3ECF2;font-size:15px;font-family:inherit;
+    background:#FBFDFE;
+  }
+  input[type=text]:focus{outline:none;border-color:var(--sky-mid);}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+  .chip{
+    padding:8px 14px;border-radius:999px;background:#F0F7FC;border:1.5px solid #DCEAF2;
+    font-size:13px;font-weight:700;color:var(--sky-deep);cursor:pointer;transition:.15s;
+  }
+  .chip:hover{background:#E1F0FA;}
+  .chip.selected{background:var(--sky-deep);color:#fff;border-color:var(--sky-deep);}
+
+  .btn-main{
+    display:block;width:100%;text-align:center;
+    background:linear-gradient(135deg,var(--coral),var(--coral-deep));
+    color:#fff;border:none;padding:16px;border-radius:999px;
+    font-size:16px;font-weight:900;font-family:'Zen Maru Gothic',sans-serif;
+    cursor:pointer;box-shadow:0 8px 20px rgba(232,82,61,.35);
+    margin-top:18px;transition:.15s;
+  }
+  .btn-main:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(232,82,61,.45);}
+  .btn-main:active{transform:translateY(0);}
+  .btn-main:disabled{opacity:.45;cursor:not-allowed;transform:none;}
+  .btn-sub{
+    display:block;width:100%;text-align:center;background:none;
+    border:2px solid #DCE6EC;color:var(--ink-soft);padding:12px;border-radius:999px;
+    font-size:14px;font-weight:700;font-family:'Noto Sans JP',sans-serif;
+    cursor:pointer;margin-top:10px;
+  }
+
+  /* ---------- quiz ---------- */
+  .q-count{font-size:13px;font-weight:700;color:var(--sun-deep);margin-bottom:6px;}
+  .q-text{font-size:19px;font-weight:700;line-height:1.6;margin-bottom:22px;color:var(--ink);font-family:'Zen Maru Gothic',sans-serif;}
+  .answer-grid{display:grid;gap:10px;}
+  .answer-btn{
+    display:flex;align-items:center;gap:12px;
+    background:#FBFDFE;border:2px solid #E7EEF2;border-radius:16px;
+    padding:14px 16px;font-size:15px;font-weight:700;color:var(--ink);
+    cursor:pointer;text-align:left;transition:.15s;font-family:'Noto Sans JP',sans-serif;
+  }
+  .answer-btn .emo{font-size:22px;}
+  .answer-btn:hover{border-color:var(--sky-mid);background:#F0F8FD;}
+  .answer-btn:active{transform:scale(.98);}
+  .back-link{
+    text-align:center;font-size:13px;color:var(--ink-soft);margin-top:16px;cursor:pointer;font-weight:700;
+  }
+
+  /* ---------- loading ---------- */
+  .loading-wrap{text-align:center;padding:70px 10px;}
+  .loading-wrap .icon{font-size:56px;animation:bounce 1.1s infinite ease-in-out;}
+  @keyframes bounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-14px);}}
+  .loading-wrap p{margin-top:16px;font-weight:700;color:var(--ink-soft);}
+
+  /* ---------- results ---------- */
+  .result-hero{
+    background:linear-gradient(135deg,var(--sun),var(--sun-deep));
+    border-radius:var(--radius-lg);padding:26px 22px;color:#3A2600;
+    box-shadow:var(--shadow);margin-bottom:18px;position:relative;overflow:hidden;
+  }
+  .result-hero .eyebrow{font-size:12.5px;font-weight:800;background:rgba(255,255,255,.4);padding:4px 12px;border-radius:999px;display:inline-block;margin-bottom:10px;}
+  .result-hero h2{font-size:23px;margin:0 0 6px;font-weight:900;}
+  .result-hero p{font-size:13.5px;margin:0;line-height:1.7;}
+  .type-badges{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+  .type-badge{
+    background:#fff;border-radius:14px;padding:10px 14px;display:flex;align-items:center;gap:8px;
+    box-shadow:0 4px 10px rgba(0,0,0,.08);font-weight:800;font-size:13.5px;color:var(--sky-deep);
+  }
+  .type-badge .emo{font-size:20px;}
+
+  .bar-row{display:flex;align-items:center;gap:10px;margin:9px 0;}
+  .bar-label{width:96px;flex-shrink:0;font-size:12.5px;font-weight:700;color:var(--ink-soft);}
+  .bar-track{flex:1;background:#EEF3F6;border-radius:999px;height:12px;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--sky-mid),var(--sky-deep));}
+  .bar-val{width:26px;text-align:right;font-size:12px;font-weight:800;color:var(--ink-soft);}
+
+  .section-title{
+    font-size:16px;font-weight:900;color:var(--ink);margin:26px 0 12px;
+    display:flex;align-items:center;gap:8px;font-family:'Zen Maru Gothic',sans-serif;
+  }
+  .note-box{
+    background:#FFF3E0;border:1.5px dashed #FFCB80;border-radius:14px;
+    padding:12px 14px;font-size:13px;color:#8A5A00;margin-bottom:14px;line-height:1.7;
+  }
+
+  .company-card{
+    background:var(--card);border-radius:var(--radius-md);padding:18px 18px 16px;
+    box-shadow:var(--shadow);margin-bottom:14px;border-left:6px solid var(--leaf);
+    position:relative;
+  }
+  .company-card .rank{
+    position:absolute;top:-10px;left:14px;background:var(--coral);color:#fff;
+    font-size:11px;font-weight:900;padding:4px 10px;border-radius:999px;
+    box-shadow:0 3px 8px rgba(0,0,0,.15);
+  }
+  .company-name{font-size:17px;font-weight:900;color:var(--ink);margin:6px 0 4px;font-family:'Zen Maru Gothic',sans-serif;}
+  .company-job{font-size:14px;font-weight:700;color:var(--sky-deep);margin-bottom:10px;}
+  .info-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+  .info-pill{
+    font-size:12px;font-weight:700;background:#F1F8F4;color:#2C7A4B;
+    padding:5px 11px;border-radius:999px;display:flex;align-items:center;gap:4px;
+  }
+  .info-pill.money{background:#FFF3E0;color:#B06A00;}
+  .info-pill.holiday{background:#EAF2FF;color:#2857A6;}
+  .info-pill.bonus{background:#FDECEF;color:#B23A55;}
+  .desc-text{
+    font-size:13px;color:var(--ink-soft);line-height:1.75;
+    background:#FAFBFC;border-radius:12px;padding:11px 13px;margin-bottom:10px;
+    white-space:pre-line;
+  }
+  .id-row{
+    display:flex;gap:16px;font-size:11.5px;color:#9AA7B0;font-weight:700;
+    border-top:1px dashed #E5EBEF;padding-top:9px;
+  }
+  .match-tag{
+    display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;
+    color:var(--sky-deep);background:#E7F5FF;padding:3px 9px;border-radius:999px;margin-bottom:8px;
+  }
+
+  .empty-box{
+    text-align:center;padding:40px 20px;color:var(--ink-soft);
+  }
+  .empty-box .icon{font-size:44px;margin-bottom:10px;}
+
+  .restart-bar{
+    display:flex;gap:10px;margin-top:26px;
+  }
+  .restart-bar button{flex:1;}
+
+  footer.credit{
+    text-align:center;font-size:11px;color:#B7C2CA;margin-top:30px;
+  }
+
+  @media (max-width:400px){
+    .hero h1{font-size:23px;}
+    .compass{font-size:36px;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="top-bar">
+    <span class="badge-school">🌤️ 鹿児島県立曽於高等学校 3年生 向け</span>
+  </div>
+
+  <!-- ============ SCREEN 0: INTRO ============ -->
+  <section class="screen active" id="screen-intro">
+    <div class="hero">
+      <span class="compass">🧭</span>
+      <span class="eyebrow">そお・しごとたんけん診断</span>
+      <h1>30の質問で、<br>あなたに合う仕事を見つけよう</h1>
+      <p>簡単な質問に答えるだけで、あなたの「得意」「好き」を見える化。<br>
+      そのあと、実際の求人データの中から、あなたにぴったりの会社をおすすめします。</p>
+    </div>
+
+    <div class="card">
+      <h3>📋 これから行うこと</h3>
+      <div class="bar-row" style="align-items:flex-start;">
+        <div style="width:30px;flex-shrink:0;font-size:20px;">①</div>
+        <div style="font-size:14px;line-height:1.7;">やりたい職業や、働きたい場所を教えてください（かんたんでOK）</div>
+      </div>
+      <div class="bar-row" style="align-items:flex-start;">
+        <div style="width:30px;flex-shrink:0;font-size:20px;">②</div>
+        <div style="font-size:14px;line-height:1.7;">30問の質問に、直感で答えてください（4択・1分〜2分程度）</div>
+      </div>
+      <div class="bar-row" style="align-items:flex-start;">
+        <div style="width:30px;flex-shrink:0;font-size:20px;">③</div>
+        <div style="font-size:14px;line-height:1.7;">あなたのタイプに合わせて、実際の求人から会社をご紹介します</div>
+      </div>
+    </div>
+
+    <button class="btn-main" onclick="goTo('profile')">はじめる 🚀</button>
+  </section>
+
+  <!-- ============ SCREEN 1: PROFILE (job & location wish) ============ -->
+  <section class="screen" id="screen-profile">
+    <div class="road-wrap">
+      <div class="road-track"><div class="road-fill" style="width:0%"></div><div class="road-walker" style="left:0%">🚶</div></div>
+      <div class="road-count">STEP 1/3</div>
+    </div>
+
+    <div class="card">
+      <h3>💭 まずは、あなたの希望を教えてね</h3>
+
+      <label class="field-label">① やりたい職業・職種はありますか？（自由入力／わからなければ空欄でOK）</label>
+      <input type="text" id="input-job" placeholder="例：介護、調理、事務、電気工事 など">
+      <div class="chip-row" id="chip-job"></div>
+
+      <label class="field-label">② どこで働きたいですか？（都道府県・市区町村など）</label>
+      <input type="text" id="input-location" placeholder="例：鹿児島県、宮崎県、都城市 など">
+      <div class="chip-row" id="chip-location"></div>
+    </div>
+
+    <button class="btn-main" onclick="goTo('quiz')">診断をはじめる ➡️</button>
+    <div class="back-link" onclick="goTo('intro')">← 戻る</div>
+  </section>
+
+  <!-- ============ SCREEN 2: QUIZ ============ -->
+  <section class="screen" id="screen-quiz">
+    <div class="road-wrap">
+      <div class="road-track"><div class="road-fill" id="quiz-fill" style="width:0%"></div><div class="road-walker" id="quiz-walker" style="left:0%">🚶</div></div>
+      <div class="road-count" id="quiz-count">0/30</div>
+    </div>
+
+    <div class="card">
+      <div class="q-count" id="q-cat-label">質問</div>
+      <div class="q-text" id="q-text"></div>
+      <div class="answer-grid" id="answer-grid"></div>
+    </div>
+    <div class="back-link" onclick="prevQuestion()">← ひとつ前の質問に戻る</div>
+  </section>
+
+  <!-- ============ SCREEN 3: LOADING ============ -->
+  <section class="screen" id="screen-loading">
+    <div class="loading-wrap">
+      <div class="icon">🧭</div>
+      <p id="loading-text">求人データを読み込んでいます…</p>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN 4: RESULT ============ -->
+  <section class="screen" id="screen-result">
+    <div id="result-content"></div>
+  </section>
+
+  <footer class="credit">データ出典：曽於高等学校 求人情報 kyujin2026.csv</footer>
+</div>
+
+<script>
+/* ============================================================
+   データ定義
+============================================================ */
+const CSV_URL = "https://soo-hs.github.io/soohs/kyujin/kyujin2026.csv";
+
+const CATEGORY_META = {
+  tech:        {label:"研究・技術系", emoji:"🔬", csv:["研究・技術の職業"], desc:"新しい仕組みを考えたり、専門的な技術を追求する仕事"},
+  construction:{label:"建設・工事系", emoji:"🏗️", csv:["建設・土木・電気工事の職業"], desc:"現場でものを作り上げる、電気・土木・建築の仕事"},
+  manufacturing:{label:"製造・ものづくり系", emoji:"⚙️", csv:["製造・修理・塗装・製図等の職業"], desc:"コツコツと製品を作ったり修理したりする仕事"},
+  transport:   {label:"運転・輸送系", emoji:"🚚", csv:["配送・輸送・機械運転の職業"], desc:"車両や機械を操作して人やものを運ぶ仕事"},
+  handling:    {label:"運搬・仕分け系", emoji:"📦", csv:["運搬・清掃・包装・選別等の職業"], desc:"丁寧な手作業で仕分け・梱包・清掃を行う仕事"},
+  sales:       {label:"販売・営業系", emoji:"🛍️", csv:["販売・営業の職業"], desc:"お客様に商品やサービスを届け、売上をつくる仕事"},
+  service:     {label:"接客・サービス系", emoji:"🍳", csv:["サービスの職業"], desc:"調理・ホテル・接客などお客様をもてなす仕事"},
+  office:      {label:"事務・オフィス系", emoji:"💻", csv:["事務的職業"], desc:"パソコンや書類を使い、正確に仕事を進める職種"},
+  security:    {label:"警備・保安系", emoji:"🛡️", csv:["警備・保安の職業"], desc:"人や施設の安全を守る、責任感のある仕事"},
+  agriculture: {label:"農林漁業系", emoji:"🌾", csv:["農林漁業の職業"], desc:"自然の中で植物や動物と関わりながら働く仕事"},
+  care:        {label:"福祉・介護系", emoji:"🤝", csv:["福祉・介護の職業"], desc:"高齢者や困っている人を支える、思いやりの仕事"}
+};
+
+const QUESTIONS = [
+  {cat:"tech", q:"新しい仕組みや機械の設計図を考えるのはワクワクする"},
+  {cat:"tech", q:"電気や機械のしくみを勉強するのが好きだ"},
+  {cat:"tech", q:"「なぜこうなるんだろう？」と考えて工夫するのが得意だ"},
+
+  {cat:"construction", q:"現場で体を動かしながらものを作る仕事にあこがれる"},
+  {cat:"construction", q:"電気配線や工事現場の仕事に興味がある"},
+  {cat:"construction", q:"完成した建物や設備を見て「自分が作った」と実感したい"},
+
+  {cat:"manufacturing", q:"コツコツと同じ作業を丁寧に続けるのが得意だ"},
+  {cat:"manufacturing", q:"機械を操作したり部品を組み立てたりするのが好きだ"},
+  {cat:"manufacturing", q:"壊れたものを直したり、仕組みを整えたりするのが楽しい"},
+
+  {cat:"transport", q:"車や重機の運転に興味がある"},
+  {cat:"transport", q:"荷物や人をきちんと目的地まで届けることにやりがいを感じる"},
+
+  {cat:"handling", q:"決められたルールに沿って丁寧に仕分けや梱包をするのが好きだ"},
+  {cat:"handling", q:"整理整頓や掃除をしてきれいにするのが得意だ"},
+
+  {cat:"sales", q:"お客様に商品やサービスをおすすめするのが楽しい"},
+  {cat:"sales", q:"「どうやったらもっと売れるか」を考えるのが好きだ"},
+  {cat:"sales", q:"初対面の人とでも積極的に話しかけられる"},
+
+  {cat:"service", q:"料理を作ってみんなに食べてもらうのが好きだ"},
+  {cat:"service", q:"ホテルや飲食店でお客様をもてなす仕事に興味がある"},
+  {cat:"service", q:"誰かに「ありがとう」と言われると嬉しくなる"},
+
+  {cat:"office", q:"パソコンでの入力や書類作成を正確に行うのが得意だ"},
+  {cat:"office", q:"数字を扱ったり計算したりするのが好きだ"},
+  {cat:"office", q:"オフィスでコツコツ事務作業をする仕事に興味がある"},
+
+  {cat:"security", q:"人や施設の安全を守る責任のある仕事に興味がある"},
+  {cat:"security", q:"落ち着いて周囲に気を配ることができる"},
+
+  {cat:"agriculture", q:"自然の中で体を動かして働くのが好きだ"},
+  {cat:"agriculture", q:"植物や動物の成長に関わる仕事に興味がある"},
+  {cat:"agriculture", q:"屋外での仕事は室内よりも楽しいと感じる"},
+
+  {cat:"care", q:"困っている人や高齢者のお世話をすることにやりがいを感じる"},
+  {cat:"care", q:"人の気持ちに寄り添うことが得意だ"},
+  {cat:"care", q:"誰かをサポートする仕事に就きたいと思う"}
+];
+
+const ANSWER_OPTIONS = [
+  {label:"とてもそう思う", emo:"😄", val:3},
+  {label:"そう思う",       emo:"🙂", val:2},
+  {label:"あまり思わない", emo:"😐", val:1},
+  {label:"思わない",       emo:"😕", val:0}
+];
+
+const JOB_CHIPS = ["介護","調理","事務","販売・接客","電気工事","製造・組立","運転・配送","警備","農業"];
+const LOCATION_CHIPS = ["鹿児島県","宮崎県","県内どこでも","県外でもOK"];
+
+/* ============================================================
+   状態管理
+============================================================ */
+let state = {
+  jobWish:"",
+  locationWish:"",
+  currentQ:0,
+  answers:new Array(QUESTIONS.length).fill(null)
+};
+
+function goTo(screenId){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById("screen-"+screenId).classList.add("active");
+  window.scrollTo({top:0,behavior:"smooth"});
+  if(screenId==="quiz"){ renderQuestion(); }
+}
+
+/* ---- chips for profile screen ---- */
+function buildChips(){
+  const jobWrap = document.getElementById("chip-job");
+  JOB_CHIPS.forEach(txt=>{
+    const c=document.createElement("div");
+    c.className="chip"; c.textContent=txt;
+    c.onclick=()=>{
+      document.getElementById("input-job").value = txt;
+      [...jobWrap.children].forEach(x=>x.classList.remove("selected"));
+      c.classList.add("selected");
+    };
+    jobWrap.appendChild(c);
+  });
+  const locWrap = document.getElementById("chip-location");
+  LOCATION_CHIPS.forEach(txt=>{
+    const c=document.createElement("div");
+    c.className="chip"; c.textContent=txt;
+    c.onclick=()=>{
+      document.getElementById("input-location").value = (txt==="県内どこでも"||txt==="県外でもOK") ? "" : txt;
+      [...locWrap.children].forEach(x=>x.classList.remove("selected"));
+      c.classList.add("selected");
+    };
+    locWrap.appendChild(c);
+  });
+}
+buildChips();
+
+/* ---- quiz rendering ---- */
+function updateRoad(){
+  const total = QUESTIONS.length;
+  const pct = Math.round((state.currentQ/total)*100);
+  document.getElementById("quiz-fill").style.width = pct+"%";
+  document.getElementById("quiz-walker").style.left = pct+"%";
+  document.getElementById("quiz-count").textContent = state.currentQ+"/"+total;
+}
+
+function renderQuestion(){
+  if(state.currentQ >= QUESTIONS.length){
+    // profile capture then move on
+    state.jobWish = document.getElementById("input-job").value.trim();
+    state.locationWish = document.getElementById("input-location").value.trim();
+    finishQuiz();
+    return;
+  }
+  const item = QUESTIONS[state.currentQ];
+  const meta = CATEGORY_META[item.cat];
+  document.getElementById("q-cat-label").textContent = `質問 ${state.currentQ+1} / ${QUESTIONS.length}　${meta.emoji} ${meta.label}`;
+  document.getElementById("q-text").textContent = item.q;
+  const grid = document.getElementById("answer-grid");
+  grid.innerHTML = "";
+  ANSWER_OPTIONS.forEach(opt=>{
+    const b = document.createElement("button");
+    b.className="answer-btn";
+    b.innerHTML = `<span class="emo">${opt.emo}</span><span>${opt.label}</span>`;
+    b.onclick = ()=>selectAnswer(opt.val);
+    grid.appendChild(b);
+  });
+  updateRoad();
+}
+
+function selectAnswer(val){
+  state.answers[state.currentQ] = val;
+  state.currentQ++;
+  if(state.currentQ >= QUESTIONS.length){
+    // capture profile values before quiz screen unmounts (already captured on profile submit, but re-read is safe)
+    const jobInput = document.getElementById("input-job");
+    const locInput = document.getElementById("input-location");
+    if(jobInput) state.jobWish = jobInput.value.trim();
+    if(locInput) state.locationWish = locInput.value.trim();
+    goTo("loading");
+    runRecommendation();
+  } else {
+    renderQuestion();
+  }
+}
+
+function prevQuestion(){
+  if(state.currentQ > 0){
+    state.currentQ--;
+    renderQuestion();
+  } else {
+    goTo("profile");
+  }
+}
+
+/* ============================================================
+   採点 → CSV取得 → マッチング
+============================================================ */
+function computeScores(){
+  const scores = {};
+  Object.keys(CATEGORY_META).forEach(k=>scores[k]=0);
+  QUESTIONS.forEach((item,i)=>{
+    const v = state.answers[i] || 0;
+    scores[item.cat] += v;
+  });
+  return scores;
+}
+
+function finishQuiz(){
+  goTo("loading");
+  runRecommendation();
+}
+
+async function runRecommendation(){
+  const loadingText = document.getElementById("loading-text");
+  const scores = computeScores();
+
+  // rank categories
+  const ranked = Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+  const top1 = ranked[0][0];
+  const top2 = ranked[1][0];
+  const top3 = ranked[2][0];
+
+  try{
+    loadingText.textContent = "求人データを読み込んでいます…";
+    const res = await fetch(CSV_URL);
+    if(!res.ok) throw new Error("fetch failed");
+    let text = await res.text();
+    text = text.replace(/^\uFEFF/, "");
+
+    loadingText.textContent = "あなたに合う会社を探しています…";
+    const parsed = Papa.parse(text, {header:true, skipEmptyLines:true});
+    const rows = parsed.data;
+
+    const jobWish = (state.jobWish||"").trim();
+    const locWish = (state.locationWish||"").trim();
+
+    const scored = rows.map(row=>{
+      let s = 0;
+      const cat1 = row["職業分類（ハローワーク）大分類"] || "";
+      const cat2 = row["職業分類2（ハローワーク）大分類"] || "";
+      const catList = [cat1, cat2];
+
+      if(catList.includes(CATEGORY_META[top1].csv[0])) s += 6;
+      if(catList.includes(CATEGORY_META[top2].csv[0])) s += 3;
+      if(catList.includes(CATEGORY_META[top3].csv[0])) s += 1;
+
+      const locField = [
+        row["就業場所住所（市区町村）"]||"",
+        row["就業場所住所2（市区町村）"]||"",
+        row["就業場所住所3（市区町村）"]||""
+      ].join(" ");
+      if(locWish && locField.includes(locWish)) s += 5;
+
+      const jobField = (row["職種"]||"") + " " + (row["仕事の内容"]||"");
+      if(jobWish && jobField.includes(jobWish)) s += 8;
+
+      let matchedCat = null;
+      if(catList.includes(CATEGORY_META[top1].csv[0])) matchedCat = top1;
+      else if(catList.includes(CATEGORY_META[top2].csv[0])) matchedCat = top2;
+      else if(catList.includes(CATEGORY_META[top3].csv[0])) matchedCat = top3;
+
+      return {row, score:s, matchedCat};
+    });
+
+    let candidates = scored.filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
+
+    let locationRelaxed = false;
+    if(locWish){
+      const withLocation = candidates.filter(x=>{
+        const locField = [
+          x.row["就業場所住所（市区町村）"]||"",
+          x.row["就業場所住所2（市区町村）"]||"",
+          x.row["就業場所住所3（市区町村）"]||""
+        ].join(" ");
+        return locField.includes(locWish);
+      });
+      if(withLocation.length >= 3){
+        candidates = withLocation;
+      } else {
+        locationRelaxed = true;
+      }
+    }
+
+    // dedupe by 求人番号
+    const seen = new Set();
+    const deduped = [];
+    for(const c of candidates){
+      const id = c.row["求人番号"];
+      if(id && !seen.has(id)){
+        seen.add(id);
+        deduped.push(c);
+      }
+      if(deduped.length >= 8) break;
+    }
+
+    renderResult(scores, ranked, deduped, locationRelaxed);
+    goTo("result");
+
+  }catch(err){
+    loadingText.textContent = "データの読み込みに失敗しました。通信環境をご確認のうえ、もう一度お試しください。";
+    console.error(err);
+  }
+}
+
+/* ============================================================
+   結果表示
+============================================================ */
+function fmtMoney(v){
+  if(!v) return null;
+  const n = parseInt(String(v).replace(/[^\d]/g,""),10);
+  if(isNaN(n) || n===0) return null;
+  return n.toLocaleString()+"円";
+}
+
+function truncate(str, n){
+  if(!str) return "";
+  const clean = str.replace(/\s+/g," ").trim();
+  return clean.length>n ? clean.slice(0,n)+"…" : clean;
+}
+
+function renderResult(scores, ranked, candidates, locationRelaxed){
+  const maxScore = Math.max(...Object.values(scores), 1);
+  const top1 = ranked[0][0], top2 = ranked[1][0];
+
+  let html = "";
+
+  html += `
+    <div class="result-hero">
+      <span class="eyebrow">✨ 診断結果</span>
+      <h2>あなたは「${CATEGORY_META[top1].emoji} ${CATEGORY_META[top1].label}」タイプ！</h2>
+      <p>${CATEGORY_META[top1].desc}</p>
+      <div class="type-badges">
+        <div class="type-badge"><span class="emo">${CATEGORY_META[top1].emoji}</span>1位：${CATEGORY_META[top1].label}</div>
+        <div class="type-badge"><span class="emo">${CATEGORY_META[top2].emoji}</span>2位：${CATEGORY_META[top2].label}</div>
+      </div>
+    </div>
+  `;
+
+  html += `<div class="card"><h3>📊 あなたの適性スコア</h3>`;
+  ranked.forEach(([key,val])=>{
+    const meta = CATEGORY_META[key];
+    const pct = Math.round((val/maxScore)*100);
+    html += `
+      <div class="bar-row">
+        <div class="bar-label">${meta.emoji} ${meta.label}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <div class="bar-val">${val}</div>
+      </div>
+    `;
+  });
+  html += `</div>`;
+
+  html += `<div class="section-title">🏢 あなたにおすすめの会社</div>`;
+
+  if(state.jobWish || state.locationWish){
+    html += `<div class="note-box">🔎 希望条件：${state.jobWish? "職種「"+state.jobWish+"」":""} ${state.locationWish? "／勤務地「"+state.locationWish+"」":""}
+      ${locationRelaxed ? "<br>※ご希望のエリアでは件数が少なかったため、他地域の求人も含めて表示しています。" : ""}
+    </div>`;
+  }
+
+  if(candidates.length===0){
+    html += `
+      <div class="card empty-box">
+        <div class="icon">🔍</div>
+        <div style="font-weight:700;">条件に合う求人が見つかりませんでした。</div>
+        <div style="font-size:13px;margin-top:6px;">職種や勤務地の希望を変えて、もう一度お試しください。</div>
+      </div>
+    `;
+  } else {
+    candidates.forEach((c, idx)=>{
+      const row = c.row;
+      const location = [row["就業場所住所（市区町村）"], row["就業場所住所2（市区町村）"], row["就業場所住所3（市区町村）"]]
+        .filter(Boolean).join(" ／ ");
+      const salary = fmtMoney(row["月給（基本給+手当+残業代）"]);
+      const bonus = row["賞与有無（新卒）"] || "";
+      const holidays = row["年間休日数"] || "";
+      const jobDesc = truncate(row["仕事の内容"], 90);
+      const supplement = truncate(row["補足事項"], 70);
+      const matchedMeta = c.matchedCat ? CATEGORY_META[c.matchedCat] : null;
+
+      html += `
+        <div class="company-card">
+          <span class="rank">おすすめ度 ${idx+1}</span>
+          ${matchedMeta ? `<div class="match-tag">${matchedMeta.emoji} ${matchedMeta.label}に近いお仕事</div>` : ""}
+          <div class="company-name">🏢 ${row["事業所名"]||"（会社名不明）"}</div>
+          <div class="company-job">💼 ${row["職種"]||""}</div>
+          <div class="info-row">
+            ${location ? `<span class="info-pill">📍 ${location}</span>` : ""}
+            ${salary ? `<span class="info-pill money">💰 月給 ${salary}</span>` : ""}
+            ${bonus ? `<span class="info-pill bonus">🎁 賞与：${bonus}</span>` : ""}
+            ${holidays ? `<span class="info-pill holiday">📅 年間休日 ${holidays}日</span>` : ""}
+          </div>
+          ${jobDesc ? `<div class="desc-text">${jobDesc}</div>` : ""}
+          ${supplement ? `<div class="desc-text" style="background:#FFF8ED;">💡 ${supplement}</div>` : ""}
+          <div class="id-row">
+            <span>管理番号：${row["管理番号"] || "―"}</span>
+            <span>求人番号：${row["求人番号"] || "―"}</span>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  html += `
+    <div class="restart-bar">
+      <button class="btn-sub" onclick="restartQuiz()">🔁 もう一度診断する</button>
+    </div>
+  `;
+
+  document.getElementById("result-content").innerHTML = html;
+}
+
+function restartQuiz(){
+  state = {jobWish:"", locationWish:"", currentQ:0, answers:new Array(QUESTIONS.length).fill(null)};
+  document.getElementById("input-job").value="";
+  document.getElementById("input-location").value="";
+  document.querySelectorAll(".chip").forEach(c=>c.classList.remove("selected"));
+  goTo("intro");
+}
+</script>
+</body>
+</html>
