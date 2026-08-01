@@ -37,6 +37,7 @@
       display: grid;
       grid-template-rows: 1fr auto;
       height: 100vh;
+      height: 100dvh; /* スマホのアドレスバー分の誤差を吸収 */
       overflow: hidden;
     }
 
@@ -253,6 +254,7 @@
       overflow-y: auto;
       overflow-x: hidden;
       min-height: 0;
+      -webkit-overflow-scrolling: touch;
     }
 
     .section-header {
@@ -595,7 +597,7 @@
 
         <a class="link-card" href="kyujin2026_prefecture_report.html" target="_blank">
           <span class="link-number">25</span>
-          <p class="link-title-ja" style="color:var(--mist);">曽於高校求人票<br>都道府県別データ分析</p>
+          <p class="link-title-ja">曽於高校求人票<br>都道府県別データ分析</p>
           <span class="link-title-en">KUSHIRA COMMERCIAL H.S.</span>
         </a>
 
@@ -621,8 +623,15 @@
   function toggleExtra() {
     const grid = document.getElementById('extra-grid');
     const toggle = document.getElementById('extra-toggle');
+    const opening = !grid.classList.contains('open');
     grid.classList.toggle('open');
     toggle.classList.toggle('open');
+    if (opening) {
+      // 開いた直後にレイアウトを確定させてからスクロールさせる
+      requestAnimationFrame(() => {
+        toggle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
   }
 
   function setView(mode) {
